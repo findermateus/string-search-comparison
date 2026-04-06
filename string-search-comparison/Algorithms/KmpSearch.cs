@@ -1,88 +1,155 @@
 using System.Diagnostics;
 using string_search_comparison.Interfaces;
+using string_search_comparison.Models;
 
 namespace string_search_comparison.Algorithms;
 
 public class KmpSearch : IStringSearchStrategy
 {
-    public void Search(string text, string pattern)
+    public string AlgorithmName => "Knuth-Morris-Pratt (KMP)";
+    public string TheoreticalComplexity => "O(n + m)";
+    public string ShortComplexity => "O(n + m)";
+    public string BestUseCase => "Repetitive patterns, texts with many partial matches, large inputs";
+
+    public SearchResult Search(string text, string pattern, bool stepByStep = false)
     {
-        var stopwatch = Stopwatch.StartNew();
-
-        Console.WriteLine("KMP STRING SEARCH START");
-        Console.WriteLine($"Text: \"{text}\"");
-        Console.WriteLine($"Pattern: \"{pattern}\"");
-
-        var textSize = text.Length;
-        var patternSize = pattern.Length;
-
-        Console.WriteLine($"Text size: {textSize}");
-        Console.WriteLine($"Pattern size: {patternSize}\n");
-
-        var m = 0;
-        var i = 0;
-
-        int[] t = new int[pattern.Length];
-
-        Console.WriteLine("[INIT] Building T table with -1");
-
-        for (var j = 0; j < t.Length; j++)
+        var result = new SearchResult
         {
-            t[j] = -1;
-            Console.WriteLine($"  T[{j}] = -1");
+            AlgorithmName = AlgorithmName,
+            TheoreticalComplexity = TheoreticalComplexity,
+            ShortComplexity = ShortComplexity,
+            TextLength = text.Length,
+            PatternLength = pattern.Length
+        };
+
+        var sw = Stopwatch.StartNew();
+        int n = text.Length;
+        int m = pattern.Length;
+
+        if (m == 0 || m > n)
+        {
+            sw.Stop();
+            result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+            result.ElapsedNanoseconds = (long)sw.Elapsed.TotalNanoseconds;
+            return result;
         }
 
-        Console.WriteLine();
+        int[] lps = BuildLpsTable(pattern, result, stepByStep);
 
-        while (m + i < text.Length)
+        if (stepByStep)
         {
-            Console.WriteLine($"[WHILE] m = {m}, i = {i}, comparing text[{m + i}] ('{text[m + i]}') with pattern[{i}] ('{pattern[i]}')");
+            result.Steps.Add("\n=== SEARCH PHASE ===");
+            result.Steps.Add($"LPS table: [{string.Join(", ", lps)}]");
+            result.Steps.Add("i = text index (never goes back) | j = pattern index");
+            result.Steps.Add(new string('─', 60));
+        }
 
-            if (pattern[i] == text[m + i])
+        int i = 0, j = 0;
+        while (i < n)
+        {
+            result.Comparisons++;
+
+            if (stepByStep)
+                result.Steps.Add($"Compare text[{i}]='{text[i]}' with pattern[{j}]='{pattern[j]}'");
+
+            if (text[i] == pattern[j])
             {
-                Console.WriteLine("  [MATCH] Characters match");
-
-                if (i == pattern.Length - 1)
-                {
-                    stopwatch.Stop();
-                    Console.WriteLine($"[MATCH FOUND] Pattern found at index {m}");
-                    Console.WriteLine($"[TIME] Execution time: {stopwatch.ElapsedMilliseconds} ms\n");
-                    return;
-                }
-
                 i++;
-                Console.WriteLine($"  [ADVANCE] i -> {i}\n");
+                j++;
+                if (stepByStep) result.Steps.Add($"  ✓ match  →  i={i}, j={j}");
 
-                continue;
+                if (j == m)
+                {
+                    int pos = i - m;
+                    result.Positions.Add(pos);
+                    if (stepByStep)
+                        result.Steps.Add(
+                            $"  ★ PATTERN FOUND at index {pos}!  Resetting j via LPS[{j - 1}]={lps[j - 1]}");
+                    j = lps[j - 1];
+                }
             }
-
-            Console.WriteLine("  [MISMATCH] Characters do not match");
-
-            if (t[i] > -1)
+            else
             {
-                Console.WriteLine($"  [T TABLE] t[{i}] = {t[i]}");
+                if (stepByStep) result.Steps.Add($"  ✗ mismatch");
 
-                var oldM = m;
-                var oldI = i;
-
-                m = m + i - t[i];
-                i = t[i];
-
-                Console.WriteLine($"  [SHIFT] m: {oldM} -> {m}, i: {oldI} -> {i}\n");
-
-                continue;
+                if (j != 0)
+                {
+                    if (stepByStep)
+                        result.Steps.Add($"  j={j} → use LPS[{j - 1}]={lps[j - 1]}  (i stays at {i})");
+                    j = lps[j - 1];
+                }
+                else
+                {
+                    if (stepByStep) result.Steps.Add($"  j=0, advance i → {i + 1}");
+                    i++;
+                }
             }
-
-            Console.WriteLine("  [RESET] t[i] == -1, moving to next position");
-
-            m += 1;
-            i = 0;
-
-            Console.WriteLine($"  [MOVE] m -> {m}, i -> {i}\n");
         }
 
-        stopwatch.Stop();
-        Console.WriteLine("[END] Pattern not found");
-        Console.WriteLine($"[TIME] Execution time: {stopwatch.ElapsedMilliseconds} ms\n");
+        sw.Stop();
+        result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+        result.ElapsedNanoseconds = (long)sw.Elapsed.TotalNanoseconds;
+
+        if (stepByStep)
+        {
+            result.Steps.Add(new string('─', 60));
+            result.Steps.Add(
+                $"Done. {result.Positions.Count} occurrence(s) at: [{string.Join(", ", result.Positions)}]");
+            result.Steps.Add($"Total comparisons: {result.Comparisons}");
+        }
+
+        return result;
+    }
+
+    private static int[] BuildLpsTable(string pattern, SearchResult result, bool stepByStep)
+    {
+        int m = pattern.Length;
+        int[] lps = new int[m];
+        lps[0] = 0;
+
+        if (stepByStep)
+        {
+            result.Steps.Add("=== PHASE 1: BUILD LPS TABLE ===");
+            result.Steps.Add($"Pattern: \"{pattern}\"");
+            result.Steps.Add("LPS[i] = length of longest proper prefix of pattern[0..i] that is also a suffix");
+            result.Steps.Add("LPS[0] = 0  (trivially)");
+        }
+
+        int len = 0, i = 1;
+        while (i < m)
+        {
+            if (pattern[i] == pattern[len])
+            {
+                len++;
+                lps[i] = len;
+                if (stepByStep)
+                    result.Steps.Add(
+                        $"  pattern[{i}]='{pattern[i]}' == pattern[{len - 1}]='{pattern[len - 1]}'  → LPS[{i}] = {len}");
+                i++;
+            }
+            else if (len != 0)
+            {
+                if (stepByStep)
+                    result.Steps.Add(
+                        $"  pattern[{i}]='{pattern[i]}' != pattern[{len}]='{pattern[len]}'  → fallback: len = LPS[{len - 1}] = {lps[len - 1]}");
+                len = lps[len - 1];
+            }
+            else
+            {
+                lps[i] = 0;
+                if (stepByStep)
+                    result.Steps.Add(
+                        $"  pattern[{i}]='{pattern[i]}' != pattern[0]='{pattern[0]}', len=0  → LPS[{i}] = 0");
+                i++;
+            }
+        }
+
+        if (stepByStep)
+        {
+            result.Steps.Add($"LPS table complete: [{string.Join(", ", lps)}]");
+            result.AuxiliaryData["LPS Table"] = $"[{string.Join(", ", lps)}]";
+        }
+
+        return lps;
     }
 }
