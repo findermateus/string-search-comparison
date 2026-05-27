@@ -52,7 +52,7 @@ O frontend permite carregar arquivos, configurar buscas e visualizar os gráfico
 
 ---
 
-## 📊 Funcionalidades
+## Funcionalidades
 
 1.  **Carregamento de Texto:**
     *   Upload de arquivos `.txt`.
