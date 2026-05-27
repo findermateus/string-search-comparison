@@ -34,7 +34,7 @@ public class BoyerMooreSearch : IStringSearchStrategy
             return result;
         }
 
-        int[] badChar = BuildBadCharTable(pattern, result, stepByStep);
+        var badChar = BuildBadCharTable(pattern, result, stepByStep);
         int[] goodSuffix = BuildGoodSuffixTable(pattern, result, stepByStep);
 
         if (stepByStep)
@@ -81,14 +81,16 @@ public class BoyerMooreSearch : IStringSearchStrategy
             }
             else
             {
-                int bcShift = Math.Max(1, j - badChar[text[s + j]]);
+                char badC = text[s + j];
+                int lastPos = badChar.GetValueOrDefault(badC, -1);
+                int bcShift = Math.Max(1, j - lastPos);
                 int gsShift = goodSuffix[j + 1];
                 int shift = Math.Max(bcShift, gsShift);
 
                 if (stepByStep)
                 {
                     result.Steps.Add(
-                        $"  Bad-char  shift: max(1, j({j}) − badChar['{text[s + j]}']({badChar[text[s + j]]})) = {bcShift}");
+                        $"  Bad-char  shift: max(1, j({j}) − badChar['{badC}']({lastPos})) = {bcShift}");
                     result.Steps.Add($"  Good-suff shift: goodSuffix[{j + 1}] = {gsShift}");
                     result.Steps.Add($"  Applying  shift: max({bcShift}, {gsShift}) = {shift}");
                 }
@@ -112,20 +114,16 @@ public class BoyerMooreSearch : IStringSearchStrategy
         return result;
     }
 
-    private static int[] BuildBadCharTable(string pattern, SearchResult result, bool stepByStep)
+    private static Dictionary<char, int> BuildBadCharTable(string pattern, SearchResult result, bool stepByStep)
     {
-        const int alpha = 256;
-        int[] bc = new int[alpha];
-        for (int i = 0; i < alpha; i++) bc[i] = -1;
+        var bc = new Dictionary<char, int>();
         for (int i = 0; i < pattern.Length; i++) bc[pattern[i]] = i;
 
         if (stepByStep)
         {
             result.Steps.Add("=== BAD-CHARACTER TABLE ===");
             result.Steps.Add("Maps each char to its last position in pattern (-1 = not present)");
-            var entries = Enumerable.Range(0, alpha)
-                .Where(c => bc[c] >= 0)
-                .Select(c => $"'{(char)c}'→{bc[c]}");
+            var entries = bc.Select(kvp => $"'{kvp.Key}'→{kvp.Value}");
             string summary = string.Join(", ", entries);
             result.Steps.Add("Entries: " + summary);
             result.AuxiliaryData["Bad-Char Table"] = summary;

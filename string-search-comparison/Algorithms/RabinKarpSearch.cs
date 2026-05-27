@@ -11,8 +11,8 @@ public class RabinKarpSearch : IStringSearchStrategy
     public string ShortComplexity => "O(n+m) avg";
     public string BestUseCase => "Multiple-pattern search, plagiarism detection, DNA analysis";
 
-    private const int Base = 256;
-    private const int Modulus = 101;
+    private const int Base = 65536;
+    private const int Modulus = 1000003;
 
     public SearchResult Search(string text, string pattern, bool stepByStep = false)
     {
@@ -45,14 +45,14 @@ public class RabinKarpSearch : IStringSearchStrategy
             result.Steps.Add(new string('─', 60));
         }
 
-        int h = 1;
+        long h = 1;
         for (int i = 0; i < m - 1; i++)
             h = (h * Base) % Modulus;
 
         if (stepByStep)
             result.Steps.Add($"h = {Base}^({m}-1) mod {Modulus} = {h}  (used to remove leading char)");
 
-        int patHash = 0, txtHash = 0;
+        long patHash = 0, txtHash = 0;
         for (int i = 0; i < m; i++)
         {
             patHash = (Base * patHash + pattern[i]) % Modulus;
@@ -71,7 +71,10 @@ public class RabinKarpSearch : IStringSearchStrategy
             result.Comparisons++;
 
             if (stepByStep)
-                result.Steps.Add($"\n[Window i={i}] \"{text[i..(i + m)]}\"  hash={txtHash}  pattern_hash={patHash}");
+            {
+                string window = text.Length <= i + m ? text[i..] : text[i..(i + m)];
+                result.Steps.Add($"\n[Window i={i}] \"{window}\"  hash={txtHash}  pattern_hash={patHash}");
+            }
 
             if (txtHash == patHash)
             {
@@ -110,8 +113,8 @@ public class RabinKarpSearch : IStringSearchStrategy
                 if (txtHash < 0) txtHash += Modulus;
 
                 if (stepByStep)
-                    result.Steps.Add($"  Roll: remove text[{i}]='{text[i]}' (val={text[i]}), " +
-                                     $"add text[{i + m}]='{text[i + m]}' (val={text[i + m]})  → new hash={txtHash}");
+                    result.Steps.Add($"  Roll: remove text[{i}]='{text[i]}' (val={(int)text[i]}), " +
+                                     $"add text[{i + m}]='{text[i + m]}' (val={(int)text[i + m]})  → new hash={txtHash}");
             }
         }
 

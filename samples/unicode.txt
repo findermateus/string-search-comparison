@@ -1,0 +1,7 @@
+Olá mundo! 🌍
+Esta é uma frase com caracteres Unicode.
+Testando o algoritmo Boyer-Moore com emojis e acentos.
+Áéíóú, àèìòù, äëïöü.
+Emoji: 🚀, 💻, 🦀.
+A palavra "mundo" deve ser encontrada.
+A "🚀" também.

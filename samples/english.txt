@@ -1,0 +1,5 @@
+The quick brown fox jumps over the lazy dog.
+This is a standard English pangram.
+It contains every letter of the alphabet at least once.
+Searching for "fox" should return one result.
+Searching for "the" should return multiple results.

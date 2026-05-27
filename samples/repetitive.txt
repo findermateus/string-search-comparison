@@ -1,0 +1,6 @@
+ABABABACABA
+A simple repetitive pattern test.
+Pattern: ABABC
+Text: ABABABC
+LPS: [0, 0, 1, 2, 0]
+Useful for testing KMP.
